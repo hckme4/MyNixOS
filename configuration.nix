@@ -104,7 +104,11 @@ in
   # Enable touchpad support (enabled default in most desktopManager).
   services.xserver.libinput.enable = true;
 
+  #default shell across users
   users.defaultUserShell = pkgs.zsh;
+
+  #enable Mullvad VPN :)
+  services.mullvad-vpn.enable = true;
 
   # Define a user account. Don't forget to set a password with ‘passwd’.
   users.users.${user} = {
@@ -142,16 +146,20 @@ in
     vim # Do not forget to add an editor to edit configuration.nix! The Nano editor is also installed by default.
     wget
     firefox
-    terminator
+    vlc
+    libvlc
+    mpv
+    neofetch
+    git
     htop
     obconf
-    sl
     nerdfonts
     material-icons
     material-symbols
     material-design-icons
     polybar
     rofi
+    i3lock-fancy
     gparted
     flameshot
     feh
@@ -159,6 +167,11 @@ in
     picom
     discord
     alacritty
+    prusa-slicer
+    transmission-gtk
+    mullvad-vpn
+    libreoffice-qt
+    hunspell
   ];
 
   #Set up oh-my-zsh
@@ -202,6 +215,14 @@ in
 
     systemd.user.services.polybar = {
       Install.WantedBy = [ "graphical-session.target" ];
+    };
+
+    gtk = {
+      enable = true;
+      theme = {
+        name = "Materia-dark";
+        package = pkgs.materia-theme;
+      };
     };
 
     services.polybar = {
