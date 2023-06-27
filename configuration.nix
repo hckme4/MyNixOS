@@ -15,55 +15,59 @@ in
       <home-manager/nixos>
     ];
 
-  # Bootloader.
-  boot.loader.systemd-boot.enable = true;
-  boot.loader.efi.canTouchEfiVariables = true;
+  # Bootloader
+  systemd.sleep.extraConfig = "AllowSuspend=yes";
+  boot = {
+    loader = {
+      systemd-boot.enable = true;
+      efi.canTouchEfiVariables = true;
+    };
+    kernelParams = [ "button.lid_init_state=open" ];
+  };
 
-  networking.hostName = "t480s"; # Define your hostname.
-  # networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant.
-
-  # Configure network proxy if necessary
-  # networking.proxy.default = "http://user:password@proxy:port/";
-  # networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";
-
-  # Enable networking
-  networking.networkmanager.enable = true;
+  networking = {
+    hostName = "t480s";
+    networkmanager = {
+      enable = true;
+      #further configure networkmanager here!
+    };
+  };
 
   # Set your time zone.
   time.timeZone = "America/New_York";
 
   # Select internationalisation properties.
-  i18n.defaultLocale = "en_US.UTF-8";
-
-  i18n.extraLocaleSettings = {
-    LC_ADDRESS = "en_US.UTF-8";
-    LC_IDENTIFICATION = "en_US.UTF-8";
-    LC_MEASUREMENT = "en_US.UTF-8";
-    LC_MONETARY = "en_US.UTF-8";
-    LC_NAME = "en_US.UTF-8";
-    LC_NUMERIC = "en_US.UTF-8";
-    LC_PAPER = "en_US.UTF-8";
-    LC_TELEPHONE = "en_US.UTF-8";
-    LC_TIME = "en_US.UTF-8";
+  i18n = {
+    defaultLocale = "en_US.UTF-8";
+    extraLocaleSettings = {
+      LC_ADDRESS = "en_US.UTF-8";
+      LC_IDENTIFICATION = "en_US.UTF-8";
+      LC_MEASUREMENT = "en_US.UTF-8";
+      LC_MONETARY = "en_US.UTF-8";
+      LC_NAME = "en_US.UTF-8";
+      LC_NUMERIC = "en_US.UTF-8";
+      LC_PAPER = "en_US.UTF-8";
+      LC_TELEPHONE = "en_US.UTF-8";
+      LC_TIME = "en_US.UTF-8";
+    };
   };
 
   # Enable the X11 windowing system.
-  #services.xserver.enable = true;
-
-  # Enable the XFCE Desktop Environment.
-  #services.xserver.displayManager.lightdm.enable = true;
-  #services.xserver.desktopManager.xfce.enable = true;
-
   services = {
     xserver = {
       enable = true;
       displayManager = {
-        lightdm.enable = true;
-        defaultSession = "none+openbox";
+        lightdm.enable = true; #enable lightdm
+        defaultSession = "none+openbox"; #enable openbox
+        #restore my wallpaper
         sessionCommands = ''${pkgs.feh}/bin/feh --no-fehbg --bg-fill /etc/nixos/wallpaper.jpg'';
       };
       desktopManager.xfce.enable = true;
       windowManager.openbox.enable = true;
+    };
+
+    acpid = {
+      enable = true;
     };
   };
   # Configure keymap in X11
@@ -143,7 +147,7 @@ in
   # List packages installed in system profile. To search, run:
   # $ nix search wget
   environment.systemPackages = with pkgs; [
-    vim # Do not forget to add an editor to edit configuration.nix! The Nano editor is also installed by default.
+    vim
     wget
     firefox
     vlc
@@ -166,12 +170,29 @@ in
     zsh
     picom
     discord
+    codeblocksFull
+    ghidra
+    gimp-with-plugins
+    simplescreenrecorder
     alacritty
+    xfce.xfburn
+    mate.atril
     prusa-slicer
+    strawberry
     transmission-gtk
     mullvad-vpn
     libreoffice-qt
     hunspell
+    gcc
+    nasm
+    gdb
+    gnumake gcc-arm-embedded
+    nmap
+    burpsuite
+    wireshark
+    termshark
+    sqlmap
+    lynis
   ];
 
   #Set up oh-my-zsh
@@ -236,11 +257,11 @@ in
     services.picom = {
       enable = true;
       activeOpacity = 1.0;
-      inactiveOpacity = 0.8;
+      inactiveOpacity = 0.9;
       backend = "glx";
       fade = true;
       fadeDelta = 5;
-      opacityRule = [ "100:name *= 'i3lock'" ];
+      opacityRules = [ "100:name *= 'i3lock'" ];
       shadow = true;
       shadowOpacity = 0.75;
     };
@@ -294,5 +315,4 @@ in
   # Before changing this value read the documentation for this option
   # (e.g. man configuration.nix or on https://nixos.org/nixos/options.html).
   system.stateVersion = "23.05"; # Did you read the comment?
-
 }
