@@ -180,6 +180,7 @@ in
     libvlc
     mpv
     mpd
+    croc
     steam
     steamcmd
     steam-run
