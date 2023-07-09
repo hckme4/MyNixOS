@@ -6,7 +6,6 @@
 
 let
   user="w00t";
-  #put rofi theme, polybar theme, zsh theme and fluxbox theme here!
 in
 {
   imports =
@@ -22,9 +21,29 @@ in
       systemd-boot.enable = true;
       efi.canTouchEfiVariables = true;
     };
-    kernelParams = [ "button.lid_init_state=open" ];
+    kernelParams = [ "button.lid_init_state=open" "i915.force_probe=5917" ]; #i915.force_probe enables intel integrated gfx
+    kernelModules = [ "iwlwifi" ];
   };
 
+  #opengl
+  hardware.opengl = {
+    enable = true;
+    driSupport = true;
+    driSupport32Bit = true;
+  };
+
+  #nvidia drivers. uncomment as necessary.
+  #nixpkgs.config.allowUnfreePredicate = pkg:
+  #  builtins.elem (lib.getName pkg) [
+  #    "nvidia-x11"
+  #  ];
+  #services.xserver.videoDrivers = ["nvidia"];
+  #modesetting.enable = true;
+  #open = false;
+  #nvidiaSettings = true;
+  #adjust this value to the specific nvidia driver needed!
+  #package = config.boot.kernelPackages.nvidiaPackages.stable;
+ 
   networking = {
     hostName = "t480s";
     networkmanager = {
@@ -85,24 +104,29 @@ in
     mediaKeys.enable = true;
   };
 
-  #sound.enable = true;
   hardware.pulseaudio.enable = false;
   security.rtkit.enable = true;
-  services.pipewire = {
-    enable = true;
 
-    alsa = {
+  services = {
+    pipewire = {
       enable = true;
-      support32Bit = true;
-    };
-    
-    pulse.enable = true;
-    # If you want to use JACK applications, uncomment this
-    #jack.enable = true;
-
-    # use the example session manager (no others are packaged yet so this is enabled by default,
-    # no need to redefine it in your config for now)
+      alsa = {
+        enable = true;
+        support32Bit = true;
+      };
+      pulse.enable = true;
+    }; 
     #media-session.enable = true;
+    mpd = {
+      enable = true;
+      musicDirectory = "/home/${user}/Music";
+      extraConfig = ''
+        audio_output {
+          type "pulse"
+          name "MyMusic"
+        }
+      '';
+    };
   };
 
   # Enable touchpad support (enabled default in most desktopManager).
@@ -147,12 +171,18 @@ in
   # List packages installed in system profile. To search, run:
   # $ nix search wget
   environment.systemPackages = with pkgs; [
+    tree
     vim
+    vim-full
     wget
     firefox
     vlc
     libvlc
     mpv
+    mpd
+    steam
+    steamcmd
+    steam-run
     neofetch
     git
     htop
@@ -164,6 +194,16 @@ in
     polybar
     rofi
     i3lock-fancy
+    virt-manager
+    mpv
+    ookla-speedtest
+    p7zip
+    killall
+    keepassxc
+    ranger
+    pulsemixer
+    ripgrep
+    acpi
     gparted
     flameshot
     feh
@@ -186,7 +226,8 @@ in
     gcc
     nasm
     gdb
-    gnumake gcc-arm-embedded
+    gnumake
+    gcc-arm-embedded
     nmap
     burpsuite
     wireshark
@@ -194,6 +235,13 @@ in
     sqlmap
     lynis
   ];
+
+  #Set up Steam
+  programs.steam = {
+    enable = true;
+    remotePlay.openFirewall = true; #open firewall for steam remote play
+    dedicatedServer.openFirewall = true; #open firewall for source dedicated server
+  };
 
   #Set up oh-my-zsh
   programs.zsh = {
@@ -203,16 +251,28 @@ in
       theme = "darkblood";
       plugins = [
         "sudo"
+        "git"
+	"python"
+	"systemd"
+	"colorize"
+	"cp"
+	"compleat"
+	"adb"
       ];
     };
   };
 
-  # move openbox dotfiles to proper location
+  # symlink openbox dotfiles in proper location
   system.userActivationScripts.linktosharedfolder.text = ''
     if [[ ! -h "$HOME/.config/openbox" ]]; then
       ln -s "/etc/nixos/openbox" "$HOME/.config/"
     fi
   '';
+
+  fonts.fonts = with pkgs; [
+    nerdfonts
+  ]; 
+
 
   #home-manager config
   home-manager.users.${user} = { config, pkgs, ... }: {
@@ -220,7 +280,6 @@ in
       packages = with pkgs; [neovim];
       stateVersion = "23.05";
 
-      #configFile."/home/w00t/.config/openbox/rc.xml".source = /etc/nixos/openbox.xml;
       file = {
         ".config/alacritty/alacritty.yml".text = ''
           {"font":{"bold":{style":"Bold"}}}
@@ -230,12 +289,18 @@ in
     };
 
     programs.feh.enable = true;
-    systemd.user.services.feh = {
-      Install.WantedBy = [ "graphical-session.target" ];
-    };
 
-    systemd.user.services.polybar = {
-      Install.WantedBy = [ "graphical-session.target" ];
+    systemd = {
+      user = {
+        services = {
+          feh = {
+            Install.WantedBy = [ "graphical-session.target" ];
+          };
+          polybar = {
+            Install.WantedBy = [ "graphical-session.target" ];
+          };
+        };
+      };
     };
 
     gtk = {
@@ -243,27 +308,206 @@ in
       theme = {
         name = "Materia-dark";
         package = pkgs.materia-theme;
+	#name = "gtk-theme-framework";
+	#package = pkgs.gruvterial-theme;
       };
     };
 
-    services.polybar = {
+    services = {
+      polybar = {
         enable = true;
-        config = /etc/nixos/polybar.ini;
+        package = pkgs.polybarFull;
         script = ''
-          polybar -c /etc/nixos/polybar.ini &
+          polybar centerbar &
+          polybar leftbar &
+          polybar rightbar &
         '';
-    };
 
-    services.picom = {
-      enable = true;
-      activeOpacity = 1.0;
-      inactiveOpacity = 0.9;
-      backend = "glx";
-      fade = true;
-      fadeDelta = 5;
-      opacityRules = [ "100:name *= 'i3lock'" ];
-      shadow = true;
-      shadowOpacity = 0.75;
+        config = {
+          "settings" = {
+          "throttle-ms" = "50";
+          "throttle-limit" = "5";
+        };
+
+          "colors" = {
+            "black" = "#3B4252";
+            "red" = "#BF616A";
+            "green" = "#A3BE8C";
+            "yellow" = "#EBCB8B";
+            "blue" = "#5E81AC";
+            "magenta" = "#B48EAD";
+            "cyan" = "#88C0D0";
+            "white" = "#E5E9F0";
+            "black1" = "#4C566A";
+            "red1" = "#D08770";
+            "green1" = "#A3BE8C";
+            "yellow1" = "#EBCB8B";
+            "blue1" = "#81A1C1";
+            "magenta1" = "#B48EAD";
+            "cyan1" = "#8FBCBB";
+            "white1" = "#ECEFF4";
+            "background" = "#2E3440";
+            "foreground" = "#D8DEE9";
+            "ctransp" = "#00FFFF";
+          };
+
+          "global/wm" = {
+            "margin-top" = "-3";
+            "margin-bottom" = "-3";
+          };
+
+          "section/base" = {
+            "top" = "true";
+            "padding-left" = "0";
+            "spacing" = "0";
+            "padding-right" = "0";
+            "module-margin-left" = "0";
+            "module-margin-right" = "0";
+            "module-padding-left" = "0";
+            "module-padding-right" = "0";
+            "border-top-size" = "3";
+            "border-left-size" = "3";
+            "border-right-size" = "3";
+            "border-bottom-size" = "3 ";
+            "foreground" = "\${colors.foreground}";
+            "background" = "\${colors.background}";
+            "border-top-color" = "\${colors.black1}";
+            "border-bottom-color" = "\${colors.black1}";
+            "border-left-color" = "\${colors.black1}";
+            "border-right-color" = "\${colors.black1}";
+            "font-0" = "JetBrains Mono:size=12;2";
+            "font-1" = "JetBrains Mono:size=12;2";
+            "font-2" = "Font Awesome 6 Free Solid:size=12;2";
+          };
+          "bar/leftbar" = {
+            "inherit" = "section/base";
+            # Position
+            "offset-x" = "10";
+            "offset-y" = "7";
+            # Size
+            "width" = "150";
+            "height" = "25";
+            # Modules
+            "modules-left" = "xworkspaces";
+          };
+          "module/xworkspaces" = {
+            "type" = "internal/xworkspaces";
+            "label-active" = "%name%";
+            "label-active-padding" = "1";
+            "label-active-font" = "1";
+            "label-active-foreground" = "\${colors.black}";
+            "label-active-background" = "\${colors.blue1}";
+            "label-occupied" = "%index%";
+            "label-occupied-padding" = "1";
+            "label-occupied-font" = "1";
+            "label-urgent" = "%index%";
+            "label-urgent-padding" = "1";
+            "label-urgent-background" = "\${colors.red}";
+            "label-urgent-foreground" = "\${colors.red1}";
+            "label-urgent-font" = "1";
+            "label-empty" = "%name%";
+            "label-empty-padding" = "1";
+            "label-empty-font" = "1";
+            "label-empty-foreground" = "\${colors.black1}";
+            "label-empty-background" = "\${colors.black}";
+            #Icon for non indexed WS
+            "ws-icon-default" = "○";
+          };
+          "bar/centerbar" = {
+            "inherit" = "section/base";
+            # Position
+            "offset-x" = "50%:-175";
+            "offset-y" = "7";
+            # Size;
+            "width" = "350";
+            "height" = "20";
+            # Modules
+            "modules-center" = "mpd";
+          };
+          "bar/rightbar" = {
+            "inherit" = "section/base";
+            # Position,
+              "offset-x" = "100%:-293";
+            "offset-y" = "7";
+            # Size
+            "width" = "283";
+            "height" = "20";
+            # Modules
+            "modules-right" = "xkeyboard cpu memory pulseaudio date";
+          };
+          "module/date" = {
+            "type" = "internal/date";
+            "interval" = "1";
+            "format" = "<label>";
+            "format-padding" = "1";
+            "format-foreground" = "\${colors.yellow}";
+            "label" = " %date% %time%";
+              "time" = "%H:%M";
+            "date-alt" = "%A ";
+            "date" = "%d";
+          };
+          "module/mpd" = {
+            "type" = "internal/mpd";
+            # Host where mpd is running (either ip or domain name)
+            # Can also be the full path to a unix socket where mpd is running.
+            "host" = "localhost";
+            "port" = "6600";
+            "format-foreground" = "\${colors.blue1}";
+            "label-song" = "%artist% - %title%";
+            "format-online" = "<label-song>";
+          };
+          "module/pulseaudio" = {
+            "type" = "internal/pulseaudio";
+            "format-muted-background" = "\${colors.red}";
+              "format-volume-foreground" = "\${colors.green}";
+            "format-volume" = "<ramp-volume> <label-volume>";
+            "format-muted" = "<label-muted>";
+            "format-volume-padding" = "1";
+            "format-muted-padding" = "1";
+            "label-muted" = "MUTED";
+            "ramp-volume-0" = "";
+            "ramp-volume-1" = "";
+            "ramp-volume-2" = "";
+          };
+          "module/memory" = {
+            "type" = "internal/memory";
+            # Seconds to sleep between updates
+            # Default: 1
+            "interval" = "1";
+            "format" = "<label>";
+            "label" = " %percentage_used%%";
+            "format-foreground" = "\${colors.red1}";
+            "format-padding" = "1";
+          };
+          "module/cpu" = {
+            "type" = "internal/cpu";
+            # Seconds to sleep between updates
+            # Default: 1
+            "interval" = "1";
+            "label" = " %percentage%%";
+            "format-foreground" = "\${colors.magenta}";
+            "format-padding" = "1";
+          };
+          "module/xkeyboard" = {
+            "type" = "internal/xkeyboard";
+            "blacklist-0" = "num lock";
+            "label-layout" = "%layout%";
+            "format-foreground" = "\${colors.cyan1}";
+          };
+        };
+      };
+
+      picom = {
+        enable = true;
+        activeOpacity = 1.0;
+        inactiveOpacity = 0.9;
+        backend = "glx";
+        fade = true;
+        fadeDelta = 5;
+        opacityRules = [ "100:name *= 'i3lock'" ];
+        shadow = true;
+        shadowOpacity = 0.75;
+      };
     };
 
     programs.rofi = {

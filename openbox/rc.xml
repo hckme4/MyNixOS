@@ -297,7 +297,13 @@
     </keybind>
     <keybind key="A-space">
       <action name="Execute">
-        <command>rofi -show run</command>
+	      <!-- <command>rofi -show run</command> -->
+	      <command>rofi -no-config -no-lazy-grab -show drun -modi drun -theme /etc/nixos/rofi/launcher.rasi</command>
+      </action>
+    </keybind>
+    <keybind key="0x6B">
+      <action name="Execute">
+ 	      <command>flameshot gui</command>
       </action>
     </keybind>
     <keybind key="C-A-l">
