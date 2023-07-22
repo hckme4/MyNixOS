@@ -24,28 +24,25 @@ in
     kernelParams = [ "button.lid_init_state=open" "i915.force_probe=5917" ]; #i915.force_probe enables intel integrated gfx
     kernelModules = [ "iwlwifi" ];
   };
-
-  #opengl
-  hardware.opengl = {
-    enable = true;
-    driSupport = true;
-    driSupport32Bit = true;
+  
+hardware = {
+    #opengl
+    opengl = {
+      enable = true;
+      driSupport = true;
+      driSupport32Bit = true;
+    };
+    #nvidia. comment out if not in use.
+    #nvidia = {
+      #modesetting.enable = true;
+      #open = false;
+      #nvidiaSettings = true;
+      #package = config.boot.kernelPackages.nvidiaPackages.stable;
+    #};
   };
 
-  #nvidia drivers. uncomment as necessary.
-  #nixpkgs.config.allowUnfreePredicate = pkg:
-  #  builtins.elem (lib.getName pkg) [
-  #    "nvidia-x11"
-  #  ];
-  #services.xserver.videoDrivers = ["nvidia"];
-  #modesetting.enable = true;
-  #open = false;
-  #nvidiaSettings = true;
-  #adjust this value to the specific nvidia driver needed!
-  #package = config.boot.kernelPackages.nvidiaPackages.stable;
- 
   networking = {
-    hostName = "t480s";
+    hostName = "T480S";
     networkmanager = {
       enable = true;
       #further configure networkmanager here!
@@ -81,33 +78,24 @@ in
         #restore my wallpaper
         sessionCommands = ''${pkgs.feh}/bin/feh --no-fehbg --bg-fill /etc/nixos/wallpaper.jpg'';
       };
+      screenSection = ''
+        Option "metamodes" "nvidia-auto-select +0+0 { ForceCompositionPipeline = On }"
+      '';
       desktopManager.xfce.enable = true;
       windowManager.openbox.enable = true;
+      #videoDrivers = [ "nvidia" ]; # enable nvidia drivers. disable this if not used!
+      layout = "us";
+      xkbVariant = "";
+      libinput.enable = true; # set to true for laptop touchpads!
     };
 
     acpid = {
       enable = true;
     };
-  };
-  # Configure keymap in X11
-  services.xserver = {
-    layout = "us";
-    xkbVariant = "";
-  };
 
-  # Enable CUPS to print documents.
-  services.printing.enable = true;
-
-  # Enable sound with pipewire.
-  sound = {
-    enable = true;
-    mediaKeys.enable = true;
-  };
-
-  hardware.pulseaudio.enable = false;
-  security.rtkit.enable = true;
-
-  services = {
+    printing = {
+      enable = true;
+    };
     pipewire = {
       enable = true;
       alsa = {
@@ -117,32 +105,41 @@ in
       pulse.enable = true;
     }; 
     #media-session.enable = true;
-    mpd = {
-      enable = true;
-      musicDirectory = "/home/${user}/Music";
-      extraConfig = ''
-        audio_output {
-          type "pulse"
-          name "MyMusic"
-        }
-      '';
-    };
+    #mpd = {
+    #  enable = true;
+    #  musicDirectory = "/home/${user}/Music";
+      #network.startWhenNeeded = true;
+    #  extraConfig = ''
+    #    audio_output {
+    #      type "pipewire"
+    #      name "MyMusic"
+    #    }
+    #  '';
+    #};
   };
 
-  # Enable touchpad support (enabled default in most desktopManager).
-  services.xserver.libinput.enable = true;
-
+  sound = {
+    enable = true;
+    mediaKeys.enable = true;
+  };
+  hardware.pulseaudio.enable = false;
+  security.rtkit.enable = true;
   #default shell across users
   users.defaultUserShell = pkgs.zsh;
 
   #enable Mullvad VPN :)
   services.mullvad-vpn.enable = true;
 
+  #Enable libvirtd and leave room for other config.
+  virtualisation = {
+    libvirtd.enable = true;
+  };
+
   # Define a user account. Don't forget to set a password with ‘passwd’.
   users.users.${user} = {
     isNormalUser = true;
     description = "w00t";
-    extraGroups = [ "networkmanager" "wheel" "video" "audio" "networkmanager" "lp" "scanner" ];
+    extraGroups = [ "networkmanager" "wheel" "video" "audio" "networkmanager" "lp" "scanner" "libvirtd" "adbusers" ];
     #initialPassword = "1234";
     shell = pkgs.zsh;
     
@@ -166,100 +163,126 @@ in
       );
     })
     ];
+    #config.allowUnfreePredicate = pkg: # comment out this overlay if not using nvidia.
+     # builtins.elem (lib.getName pkg) [
+     #   "nvidia-x11"
+     #   "nvidia-settings"
+    #];
   };
 
+  environment = {
   # List packages installed in system profile. To search, run:
   # $ nix search wget
-  environment.systemPackages = with pkgs; [
-    tree
-    vim
-    vim-full
-    wget
-    firefox
-    vlc
-    libvlc
-    mpv
-    mpd
-    croc
-    steam
-    steamcmd
-    steam-run
-    neofetch
-    git
-    htop
-    obconf
-    nerdfonts
-    material-icons
-    material-symbols
-    material-design-icons
-    polybar
-    rofi
-    i3lock-fancy
-    virt-manager
-    mpv
-    ookla-speedtest
-    p7zip
-    killall
-    keepassxc
-    ranger
-    pulsemixer
-    ripgrep
-    acpi
-    gparted
-    flameshot
-    feh
-    zsh
-    picom
-    discord
-    codeblocksFull
-    ghidra
-    gimp-with-plugins
-    simplescreenrecorder
-    alacritty
-    xfce.xfburn
-    mate.atril
-    prusa-slicer
-    strawberry
-    transmission-gtk
-    mullvad-vpn
-    libreoffice-qt
-    hunspell
-    gcc
-    nasm
-    gdb
-    gnumake
-    gcc-arm-embedded
-    nmap
-    burpsuite
-    wireshark
-    termshark
-    sqlmap
-    lynis
-  ];
+    systemPackages = with pkgs; [
+      tree
+      vim
+      vim-full
+      wget
+      firefox
+      appimage-run
+      android-studio
+      vlc
+      libvlc
+      mpv
+      mpd
+      croc
+      openarena
+      steam
+      steamcmd
+      steam-run
+      neofetch
+      git
+      htop
+      obconf
+      nerdfonts
+      material-icons
+      material-symbols
+      material-design-icons
+      polybar
+      rofi
+      i3lock-fancy
+      virt-manager
+      mpv
+      ookla-speedtest
+      p7zip
+      killall
+      keepassxc
+      ranger
+      pulsemixer
+      ripgrep
+      acpi
+      gparted
+      flameshot
+      feh
+      zsh
+      picom
+      discord
+      codeblocksFull
+      ghidra
+      gimp-with-plugins
+      simplescreenrecorder
+      alacritty
+      xfce.xfburn
+      mate.atril
+      prusa-slicer
+      strawberry
+      transmission-gtk
+      mullvad-vpn
+      libreoffice-qt
+      hunspell
+      gcc
+      mpc-cli
+      nasm
+      telegram-desktop
+      gdb
+      gnumake
+      gcc-arm-embedded
+      nmap
+      burpsuite
+      wireshark
+      termshark
+      sqlmap
+      lynis
+      ncmpcpp
+      cmake
+    ];
 
-  #Set up Steam
-  programs.steam = {
-    enable = true;
-    remotePlay.openFirewall = true; #open firewall for steam remote play
-    dedicatedServer.openFirewall = true; #open firewall for source dedicated server
+   interactiveShellInit = ''
+     alias mpc='mpc --host="/run/user/1000/mpd/socket"'
+   '';
   };
 
-  #Set up oh-my-zsh
-  programs.zsh = {
-    enable = true;
-    ohMyZsh = {
+  programs = {
+  #Set up Steam
+    steam = {
       enable = true;
-      theme = "darkblood";
-      plugins = [
-        "sudo"
-        "git"
-	"python"
-	"systemd"
-	"colorize"
-	"cp"
-	"compleat"
-	"adb"
-      ];
+      remotePlay.openFirewall = true; #open firewall for steam remote play
+      dedicatedServer.openFirewall = true; #open firewall for source dedicated server
+    };
+    #enable dconf.
+    dconf = {
+      enable = true;
+    };
+    #Set up oh-my-zsh
+    zsh = {
+      enable = true;
+      ohMyZsh = {
+        enable = true;
+        theme = "darkblood";
+        plugins = [
+          "sudo"
+          "git"
+     	  "python"
+	  "systemd"
+	  "colorize"
+	  "cp"
+	  "compleat"
+	  "adb"
+        ];
+      };
+    };
+    adb = {
+      enable = true;
     };
   };
 
@@ -376,9 +399,9 @@ in
             "border-bottom-color" = "\${colors.black1}";
             "border-left-color" = "\${colors.black1}";
             "border-right-color" = "\${colors.black1}";
-            "font-0" = "JetBrains Mono:size=12;2";
-            "font-1" = "JetBrains Mono:size=12;2";
-            "font-2" = "Font Awesome 6 Free Solid:size=12;2";
+            "font-0" = "JetBrains Mono:size=14;2";
+            "font-1" = "JetBrains Mono:size=14;2";
+            "font-2" = "Font Awesome 6 Free Solid:size=14;2";
           };
           "bar/leftbar" = {
             "inherit" = "section/base";
@@ -386,7 +409,7 @@ in
             "offset-x" = "10";
             "offset-y" = "7";
             # Size
-            "width" = "150";
+            "width" = "105";
             "height" = "25";
             # Modules
             "modules-left" = "xworkspaces";
@@ -421,7 +444,7 @@ in
             "offset-y" = "7";
             # Size;
             "width" = "350";
-            "height" = "20";
+            "height" = "25";
             # Modules
             "modules-center" = "mpd";
           };
@@ -432,7 +455,7 @@ in
             "offset-y" = "7";
             # Size
             "width" = "283";
-            "height" = "20";
+            "height" = "30";
             # Modules
             "modules-right" = "xkeyboard cpu memory pulseaudio date";
           };
@@ -442,7 +465,7 @@ in
             "format" = "<label>";
             "format-padding" = "1";
             "format-foreground" = "\${colors.yellow}";
-            "label" = " %date% %time%";
+            "label" = " %time%";
               "time" = "%H:%M";
             "date-alt" = "%A ";
             "date" = "%d";
@@ -465,7 +488,7 @@ in
             "format-muted" = "<label-muted>";
             "format-volume-padding" = "1";
             "format-muted-padding" = "1";
-            "label-muted" = "MUTED";
+            "label-muted" = "0%";
             "ramp-volume-0" = "";
             "ramp-volume-1" = "";
             "ramp-volume-2" = "";
@@ -498,6 +521,14 @@ in
         };
       };
 
+      mpd = {
+        enable = true;
+        musicDirectory = "~/Music";
+        network = {
+          startWhenNeeded = true;
+        };
+      };
+
       picom = {
         enable = true;
         activeOpacity = 1.0;
@@ -514,7 +545,7 @@ in
     programs.rofi = {
       enable = true;
       terminal = "${pkgs.alacritty}/bin/alacritty";
-      theme = /etc/nixos/arthur.rasi;
+      theme = "/etc/nixos/polybar/scripts/rofi/launcher.rasi";
     };
   };
 
